@@ -8,6 +8,8 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
+const PORT = process.env.PORT || 3000;
+
 let gameState = {
     status: 'LOBBY',
     board: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 },
@@ -102,9 +104,10 @@ io.on('connection', (socket) => {
                 }
             }
             if (target !== -1) {
-                const captured = gameState.board[target];
-                player.score += captured;
-                for(let i=0; i<captured; i++) player.capturedCards.push(target);
+                const capturedCount = gameState.board[target];
+                // 점수 계산: 카드 숫자 * 장수
+                player.score += (target * capturedCount);
+                for(let i=0; i<capturedCount; i++) player.capturedCards.push(target);
                 gameState.board[target] = 0;
             }
         }
@@ -133,8 +136,4 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
-
-server.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
