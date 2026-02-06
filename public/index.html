@@ -8,66 +8,58 @@
         body { font-family: 'Malgun Gothic', sans-serif; text-align: center; background: #dfe6e9; margin: 0; padding: 20px; }
         .container { max-width: 950px; margin: 0 auto; }
         #lobby, #gameUI { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-
-        /* 보드/카드 스타일 */
         .board { display: flex; justify-content: center; gap: 15px; margin: 25px 0; padding: 20px; background: #f1f2f6; border-radius: 15px; }
         .slot { width: 85px; height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; position: relative; border-bottom: 4px solid transparent; transition: 0.3s; }
         .slot.active { border-bottom-color: #ff4757; transform: translateY(-5px); }
         .card-img { object-fit: cover; border-radius: 8px; box-shadow: 2px 2px 8px rgba(0,0,0,0.2); border: 2px solid white; }
         .card-img-board { width: 75px; height: 110px; }
         .card-img-hand { width: 95px; height: 140px; }
-
-        /* 배지 공통 */
         .badge { color: white; font-weight: bold; border: 2px solid white; box-shadow: 1px 1px 4px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; z-index: 10; position: absolute; }
         .num-badge-board { top: 5px; left: 5px; width: 30px; height: 30px; border-radius: 50%; font-size: 1.1em; }
         .num-badge-hand { top: -10px; left: -10px; padding: 5px 12px; border-radius: 10px; font-size: 1.2em; }
         .count-badge { bottom: -8px; right: -8px; background: #ff4757; width: 32px; height: 32px; border-radius: 50%; font-size: 1em; }
-
-        /* 점수판 */
         .score-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 20px; }
         .score-card { background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 12px; text-align: left; transition: 0.3s; }
         .score-card.active { border: 2px solid #0984e3; background: #f0f7ff; }
         .captured-list { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px; }
         .cap-item { padding: 2px 8px; border-radius: 5px; color: white; font-size: 0.8em; font-weight: bold; }
-
-        /* 손패 영역 */
         .hand { margin-top: 30px; padding: 25px; background: #74b9ff; border-radius: 20px; }
         .card-btn { background: none; border: none; cursor: pointer; position: relative; margin: 10px; transition: 0.2s; }
         .card-btn:hover:not(:disabled) { transform: translateY(-10px); }
         .card-btn:disabled { filter: grayscale(1) opacity(0.5); cursor: not-allowed; }
-
-        /* 승리 알림 */
         #victoryBanner { display: none; background: #ff7675; color: white; padding: 20px; border-radius: 15px; font-size: 2em; font-weight: bold; margin-bottom: 20px; }
         .btn-main { padding: 12px 25px; background: #00b894; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .btn-pass { background: #fdcb6e; color: #2d3436; padding: 12px 25px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .last-play-box { font-size: 0.9em; background: #f8f9fa; padding: 8px 15px; border-radius: 20px; border: 1px solid #e9ecef; color: #495057; display: inline-flex; align-items: center; gap: 8px; }
+        .last-play-badge { color: white; padding: 2px 10px; border-radius: 10px; font-weight: bold; }
+
+        /* 덱 소진 시 깜빡임 */
+        .deck-empty { color: #d63031; font-weight: bold; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.3; } }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🐘 KARIBA ONLINE</h1>
-
         <div id="lobby">
-            <input type="text" id="nameInput" placeholder="닉네임" style="padding:10px; border-radius:5px; border:1px solid #ddd;">
+            <input type="text" id="nameInput" placeholder="닉네임">
             <button class="btn-main" onclick="joinGame()">참가</button>
             <div id="waitingArea" style="display:none; margin-top:20px;">
                 <ul id="pList" style="list-style:none; padding:0; font-size:1.2em;"></ul>
                 <button id="startBtn" class="btn-main" onclick="startGame()">게임 시작</button>
             </div>
         </div>
-
         <div id="gameUI" style="display:none;">
             <div id="victoryBanner">🏆 <span id="winnerName"></span> 승리! 🏆<br>
                 <button class="btn-main" style="background:white; color:#ff7675; margin-top:10px;" onclick="resetGame()">다시하기</button>
             </div>
-
-            <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold;">
-                <div id="turnInfo" style="font-size:1.2em; color:#0984e3;"></div>
-                <div id="deckInfo"></div>
+            <div style="display:flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 20px;">
+                <div id="turnInfo" style="font-size:1.4em; font-weight:bold; color:#0984e3;"></div>
+                <div id="lastPlayInfo" style="min-height: 35px;"></div>
+                <div id="deckInfo" style="font-size: 0.9em;"></div>
             </div>
-
             <div class="board" id="boardDisplay"></div>
             <div class="score-container" id="scoreDisplay"></div>
-
             <div class="hand" id="handArea">
                 <h3 style="color:white; margin-top:0;">내 손패</h3>
                 <div id="myHand" style="display:flex; justify-content:center; flex-wrap:wrap;"></div>
@@ -76,69 +68,64 @@
             <button style="margin-top:20px; color:#b2bec3; border:none; background:none; cursor:pointer;" onclick="resetGame()">초기화</button>
         </div>
     </div>
-
     <script>
         const socket = io();
         const CARD_COLORS = { 1: "#ed8ca0", 2: "#f15e7b", 3: "#f4aa7f", 4: "#f8e682", 5: "#b3daa9", 6: "#89a9dc", 7: "#3e6eac", 8: "#ab78b1" };
-
         function joinGame() {
             const n = document.getElementById('nameInput').value;
-            if(n) { socket.emit('join', n); document.getElementById('lobby').children[0].style.display='none'; document.getElementById('lobby').children[1].style.display='none'; document.getElementById('waitingArea').style.display='block'; }
+            if(n) { socket.emit('join', n); document.getElementById('lobby').style.display='none'; document.getElementById('waitingArea').style.display='block'; }
         }
         function startGame() { socket.emit('startGame'); }
         function resetGame() { if(confirm("초기화할까요?")) socket.emit('resetGame'); }
-
         function askCount(val, max) {
             const res = prompt(`${val}번 카드를 몇 장 낼까요? (1~${max})`, "1");
             if(res && parseInt(res) >= 1 && parseInt(res) <= max) socket.emit('playCard', { cardValue: val, count: parseInt(res) });
         }
-
         socket.on('updateState', (state) => {
             const isLobby = state.status === 'LOBBY';
             document.getElementById('lobby').style.display = isLobby ? 'block' : 'none';
             document.getElementById('gameUI').style.display = isLobby ? 'none' : 'block';
-
-            if(isLobby) {
-                document.getElementById('pList').innerHTML = state.playerOrder.map(id => `<li>👤 ${state.players[id].name}</li>`).join('');
-                document.getElementById('startBtn').disabled = state.playerOrder.length < 2;
-            } else {
+            if(!isLobby) {
                 const isFinished = state.status === 'FINISHED';
                 const curId = state.playerOrder[state.turnIndex];
                 const isMyTurn = socket.id === curId;
-
-                // 승리 화면 처리
                 document.getElementById('victoryBanner').style.display = isFinished ? 'block' : 'none';
                 if(isFinished) document.getElementById('winnerName').innerText = state.winner;
                 document.getElementById('turnInfo').innerText = isFinished ? "🏁 게임 종료" : (isMyTurn ? "⚡ 당신의 차례!" : `⏳ ${state.players[curId].name} 차례`);
-                document.getElementById('deckInfo').innerText = `남은 덱: ${state.deck.length}장`;
 
-                // 보드 출력
+                // 덱 정보 표시 (0장일 때 강조)
+                const dInfo = document.getElementById('deckInfo');
+                if(state.deck.length === 0) dInfo.innerHTML = '<span class="deck-empty">🚨 덱 소진! 누군가 손패를 비우면 게임이 끝납니다!</span>';
+                else dInfo.innerText = `남은 덱: ${state.deck.length}장`;
+
+                const lp = state.lastPlay;
+                const lpDiv = document.getElementById('lastPlayInfo');
+                if(lp && !isFinished) {
+                    lpDiv.innerHTML = `<div class="last-play-box"><span><b>${lp.name}</b>님이</span><span class="last-play-badge" style="background:${CARD_COLORS[lp.cardValue]}">${lp.cardValue}번</span><span>카드를 <b>${lp.count}장</b> 냈습니다.</span></div>`;
+                } else lpDiv.innerHTML = '';
+
                 let bHtml = '';
                 for(let i=1; i<=8; i++) {
                     const count = state.board[i];
                     bHtml += `<div class="slot ${count>=3?'active':''}">
-                        ${count > 0 ? `<div class="badge num-badge-board" style="background:${CARD_COLORS[i]}">${i}</div>
-                                       <img src="/images/card${i}.png" class="card-img card-img-board">
-                                       <div style="font-weight:bold; font-size:0.8em; margin-top:5px;">x${count}장</div>`
-                                     : `<div style="font-size:0.8em; color:#ccc;">${i}번 비었음</div>`}
+                        ${count > 0 ? `<div class="badge num-badge-board" style="background:${CARD_COLORS[i]}">${i}</div><img src="/images/card${i}.png" class="card-img card-img-board"><div style="font-weight:bold; font-size:0.8em; margin-top:5px;">x${count}장</div>`
+                                     : `<div style="font-size:0.8em; color:#ccc;">${i}번</div>`}
                     </div>`;
                 }
                 document.getElementById('boardDisplay').innerHTML = bHtml;
 
-                // 점수판 출력
                 document.getElementById('scoreDisplay').innerHTML = state.playerOrder.map(id => {
                     const p = state.players[id];
                     const summary = {};
                     p.capturedCards.forEach(c => summary[c] = (summary[c] || 0) + 1);
-                    const capHtml = Object.keys(summary).map(num => `<span class="cap-item" style="background:${CARD_COLORS[num]}">${num}x${summary[num]} (${num*summary[num]}점)</span>`).join('');
-
+                    const capHtml = Object.keys(summary).map(num => `<span class="cap-item" style="background:${CARD_COLORS[num]}">${num}x${summary[num]}</span>`).join('');
                     return `<div class="score-card ${(!isFinished && id===curId)?'active':''}">
                         <div style="display:flex; justify-content:space-between;"><strong>${p.name}</strong> <span>${p.score}점</span></div>
-                        <div class="captured-list">${capHtml || '<small style="color:#ccc">획득 없음</small>'}</div>
+                        <div style="font-size:0.7em; color:#999; margin-top:5px;">손패: ${p.hand.length}장</div>
+                        <div class="captured-list">${capHtml || '<small style="color:#ccc">내역 없음</small>'}</div>
                     </div>`;
                 }).join('');
 
-                // 손패 출력
                 const me = state.players[socket.id];
                 const myHandDiv = document.getElementById('myHand');
                 myHandDiv.innerHTML = '';

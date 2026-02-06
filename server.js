@@ -18,8 +18,7 @@ let gameState = {
     turnIndex: 0,
     deck: [],
     winner: null,
-    isLastRound: false,
-    lastTurnCounter: 0
+    lastPlay: null
 };
 
 function initDeck() {
@@ -39,8 +38,7 @@ function resetGame() {
         turnIndex: 0,
         deck: [],
         winner: null,
-        isLastRound: false,
-        lastTurnCounter: 0
+        lastPlay: null
     };
 }
 
@@ -62,14 +60,43 @@ io.on('connection', (socket) => {
         io.emit('updateState', gameState);
     });
 
-    function endTurn() {
-        if (gameState.deck.length === 0 && !gameState.isLastRound) {
-            gameState.isLastRound = true;
-            gameState.lastTurnCounter = 0;
-        }
-        if (gameState.isLastRound) gameState.lastTurnCounter++;
+    socket.on('playCard', ({ cardValue, count }) => {
+        if (gameState.status !== 'PLAYING' || socket.id !== gameState.playerOrder[gameState.turnIndex]) return;
+        const player = gameState.players[socket.id];
+        const actualCount = player.hand.filter(c => c === cardValue).length;
+        if (count < 1 || count > actualCount) return;
 
-        if (gameState.isLastRound && gameState.lastTurnCounter >= gameState.playerOrder.length) {
+        // 카드 제출
+        for(let i=0; i<count; i++) {
+            player.hand.splice(player.hand.indexOf(cardValue), 1);
+        }
+        gameState.board[cardValue] += count;
+        gameState.lastPlay = { name: player.name, cardValue, count };
+
+        // 획득 로직
+        if (gameState.board[cardValue] >= 3) {
+            let target = -1;
+            if (cardValue === 1 && gameState.board[8] > 0) target = 8;
+            else {
+                for (let i = cardValue - 1; i >= 1; i--) {
+                    if (gameState.board[i] > 0) { target = i; break; }
+                }
+            }
+            if (target !== -1) {
+                const capturedCount = gameState.board[target];
+                player.score += (target * capturedCount);
+                for(let i=0; i<capturedCount; i++) player.capturedCards.push(target);
+                gameState.board[target] = 0;
+            }
+        }
+
+        // 카드 보충 (덱이 있을 때만)
+        while (player.hand.length < 5 && gameState.deck.length > 0) {
+            player.hand.push(gameState.deck.pop());
+        }
+
+        // [수정된 종료 조건] 덱이 0장이고 + 누군가 손패를 다 썼을 때
+        if (gameState.deck.length === 0 && player.hand.length === 0) {
             gameState.status = 'FINISHED';
             let max = -1;
             gameState.playerOrder.forEach(id => {
@@ -82,44 +109,12 @@ io.on('connection', (socket) => {
             gameState.turnIndex = (gameState.turnIndex + 1) % gameState.playerOrder.length;
         }
         io.emit('updateState', gameState);
-    }
-
-    socket.on('playCard', ({ cardValue, count }) => {
-        if (gameState.status !== 'PLAYING' || socket.id !== gameState.playerOrder[gameState.turnIndex]) return;
-        const player = gameState.players[socket.id];
-        const actualCount = player.hand.filter(c => c === cardValue).length;
-        if (count < 1 || count > actualCount) return;
-
-        for(let i=0; i<count; i++) {
-            player.hand.splice(player.hand.indexOf(cardValue), 1);
-        }
-        gameState.board[cardValue] += count;
-
-        if (gameState.board[cardValue] >= 3) {
-            let target = -1;
-            if (cardValue === 1 && gameState.board[8] > 0) target = 8;
-            else {
-                for (let i = cardValue - 1; i >= 1; i--) {
-                    if (gameState.board[i] > 0) { target = i; break; }
-                }
-            }
-            if (target !== -1) {
-                const capturedCount = gameState.board[target];
-                // 점수 계산: 카드 숫자 * 장수
-                player.score += (target * capturedCount);
-                for(let i=0; i<capturedCount; i++) player.capturedCards.push(target);
-                gameState.board[target] = 0;
-            }
-        }
-        while (player.hand.length < 5 && gameState.deck.length > 0) {
-            player.hand.push(gameState.deck.pop());
-        }
-        endTurn();
     });
 
     socket.on('passTurn', () => {
         if (gameState.status !== 'PLAYING' || socket.id !== gameState.playerOrder[gameState.turnIndex]) return;
-        endTurn();
+        gameState.turnIndex = (gameState.turnIndex + 1) % gameState.playerOrder.length;
+        io.emit('updateState', gameState);
     });
 
     socket.on('resetGame', () => {
